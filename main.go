@@ -20,6 +20,7 @@ import (
 func main() {
 	spanCount := flag.Int("spanCount", 100, "Span count to produce")
 	parallelCount := flag.Int("parallelCount", 100, "Paralel traces")
+	spanDuration := flag.Duration("spanDuration", 10*time.Millisecond, "Span duration")
 	flag.Parse()
 
 	tracerConfig := loadTracerConfig()
@@ -32,7 +33,7 @@ func main() {
 	wg := sync.WaitGroup{}
 	for i := 0; i < *parallelCount; i++ {
 		i := i
-		rootCtx := context.Background()
+		rootCtx, rootSpan := tracer.Start(context.Background(), "Root")
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -40,10 +41,12 @@ func main() {
 				slog.Info(fmt.Sprintf("Span %d %d", i, j))
 				j := j
 				ctx, span := tracer.Start(rootCtx, fmt.Sprintf("Test_%d_%d", i, j))
-				time.Sleep(10 * time.Millisecond)
+				time.Sleep(*spanDuration)
 				span.End()
 				rootCtx = ctx
 			}
+
+			rootSpan.End()
 		}()
 	}
 
